@@ -1,2 +1,6 @@
 # ASSA2025-scientific-ML
 Repository for the class of 2025 Autumn School Series in Acoustics on Scientific Machine Learning
+
+
+
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://github.com/m-pexx/ASSA2025-scientific-ML/blob/main/ASSA2025_PINN_intro.ipynb)
