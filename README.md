@@ -6,4 +6,4 @@ Open the introduction to PINNs
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/m-pexx/ASSA2025-scientific-ML/blob/main/ASSA2025_PINN_intro.ipynb)
 
 Open the assignment on PINNs 
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/m-pexx/ASSA2025-scientific-ML/blob/main/ASSA2025_assignment.ipynb)
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/m-pexx/ASSA2025-scientific-ML/blob/main/ASSA2025_PINN_assignment.ipynb)
