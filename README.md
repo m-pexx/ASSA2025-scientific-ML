@@ -7,3 +7,6 @@ Open the introduction to PINNs
 
 Open the assignment on PINNs 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/m-pexx/ASSA2025-scientific-ML/blob/main/ASSA2025_PINN_assignment.ipynb)
+
+Open the assignment on DeepONet
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/m-pexx/ASSA2025-scientific-ML/blob/main/ASSA2025_DeepONet.ipynb)
