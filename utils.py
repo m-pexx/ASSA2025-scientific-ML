@@ -25,6 +25,8 @@ class SimulationDataType(Enum):
     SOURCE_ONLY = 3
     
 class DataInterface(ABC):
+    """Abstract interface for data loaders."""
+
     # Required attributes that concrete classes must define
     simulationDataType: SimulationDataType
     datasets: list[h5py.File]
@@ -37,15 +39,56 @@ class DataInterface(ABC):
     u_shape: np.ndarray | list[int]
     tsteps: np.ndarray
 
+    xmin_phys: float
+    xmax_phys: float
+
+    @property
+    @abstractmethod
+    def P_mesh(self) -> int:
+        """Total number of mesh points."""
+        pass
+
     @property
     @abstractmethod
     def P(self) -> int:
         """Total number of time/space points."""
         pass
 
+    @property
+    @abstractmethod
+    def xxyyzztt(self) -> np.ndarray:
+        """Spatio-temporal coordinates stacked as [x, y, z, t]."""
+        pass
+
+    @property
+    @abstractmethod
+    def xxyyzz(self) -> np.ndarray:
+        """Spatial coordinates tiled for all timesteps."""
+        pass
+
     @abstractmethod
     def u_pressures(self, idx: int) -> np.ndarray:
         """Get normalized u pressures for a given dataset index."""
+        pass
+
+    @abstractmethod
+    def normalize_spatial(self, data) -> np.ndarray:
+        """Normalize spatial coordinates to [-1, 1] range."""
+        pass
+
+    @abstractmethod
+    def normalize_temporal(self, data) -> np.ndarray:
+        """Normalize temporal coordinates relative to spatial dimension to maintain resolution for optimizer."""
+        pass
+
+    @abstractmethod
+    def denormalize_spatial(self, data) -> np.ndarray:
+        """Denormalize spatial coordinates from [-1, 1] range."""
+        pass
+
+    @abstractmethod
+    def denormalize_temporal(self, data) -> np.ndarray:
+        """Denormalize temporal coordinates."""
         pass
 
 def _calculate_u_pressure_minmax(
@@ -93,15 +136,15 @@ def _normalize_spatial(data: np.ndarray, xmin: float, xmax: float) -> np.ndarray
 
 
 def _normalize_temporal(data: np.ndarray, xmin: float, xmax: float) -> np.ndarray:
-    """Normalize temporal coordinates.
+    """Normalize temporal coordinates relative to spatial dimension to maintain resolution for optimizer.
 
     Args:
-        data: Data to normalize
+        data: Temporal data to normalize
         xmin: Minimum spatial value for normalization
         xmax: Maximum spatial value for normalization
 
     Returns:
-        Normalized temporal data
+        Normalized temporal data scaled relative to spatial extent
     """
     return data / (xmax - xmin) / 2
 
@@ -182,8 +225,8 @@ class DataH5Compact(DataInterface):
     data_prune: int
     N: int
 
-    xmin: float
-    xmax: float
+    xmin_phys: float
+    xmax_phys: float
     normalize_data: bool
     conn: np.ndarray
 
@@ -218,7 +261,7 @@ class DataH5Compact(DataInterface):
                 if self.data_prune == 1 and tag_conn in r
                 else np.array([])
             )
-            self.xmin, self.xmax = np.min(self.mesh), np.max(self.mesh)
+            self.xmin_phys, self.xmax_phys = np.min(self.mesh), np.max(self.mesh)
 
             umesh_obj = r[tag_umesh]
             umesh = np.array(umesh_obj[:])
@@ -228,7 +271,7 @@ class DataH5Compact(DataInterface):
                 else np.array(umesh_obj.attrs[tag_ushape][:], dtype=int)
             )
             self.tsteps = r[self.tags_field[0]].attrs["time_steps"]
-            self.tsteps = np.array([t for t in self.tsteps if t <= tmax / t_norm])
+            self.tsteps = np.array([t for t in self.tsteps if t <= tmax])
             self.tsteps = (
                 self.tsteps * t_norm
             )  # corresponding to c = 1 for same spatial / temporal resolution
@@ -274,23 +317,29 @@ class DataH5Compact(DataInterface):
 
     @property
     def xxyyzztt(self):
+        """Spatio-temporal coordinates stacked as [x, y, z, t]."""
         return np.hstack((self.xxyyzz, self.tt.reshape(-1, 1)))
 
     @property
     def xxyyzz(self):
+        """Spatial coordinates tiled for all timesteps."""
         return np.tile(self.mesh, (len(self.tsteps), 1))
 
     def normalize_spatial(self, data):
-        return _normalize_spatial(data, self.xmin, self.xmax)
+        """Normalize spatial coordinates to [-1, 1] range."""
+        return _normalize_spatial(data, self.xmin_phys, self.xmax_phys)
 
     def normalize_temporal(self, data):
-        return _normalize_temporal(data, self.xmin, self.xmax)
+        """Normalize temporal coordinates relative to spatial dimension to maintain resolution for optimizer."""
+        return _normalize_temporal(data, self.xmin_phys, self.xmax_phys)
 
     def denormalize_spatial(self, data):
-        return _denormalize_spatial(data, self.xmin, self.xmax)
+        """Denormalize spatial coordinates from [-1, 1] range."""
+        return _denormalize_spatial(data, self.xmin_phys, self.xmax_phys)
 
     def denormalize_temporal(self, data):
-        return _denormalize_temporal(data, self.xmin, self.xmax)
+        """Denormalize temporal coordinates."""
+        return _denormalize_temporal(data, self.xmin_phys, self.xmax_phys)
 
     def u_pressures(self, idx: int) -> np.ndarray:
         """Get normalized u pressures for a given dataset index."""
@@ -301,6 +350,7 @@ class DataH5Compact(DataInterface):
         return np.reshape(u_norm, self.u_shape)
 
     def __del__(self):
+        """Clean up by closing all open dataset files."""
         for dataset in self.datasets:
             dataset.close()
 
